@@ -6,7 +6,6 @@
 ///
 /// See: https://github.com/PacktPublishing/Asynchronous-Programming-in-Rust/issues/31
 /// for more information.
-#![feature(naked_functions)]
 use std::arch::{asm, naked_asm};
 
 const DEFAULT_STACK_SIZE: usize = 1024 * 1024 * 2;
@@ -147,7 +146,7 @@ fn guard() {
     };
 }
 
-#[naked]
+#[unsafe(naked)]
 unsafe extern "C" fn skip() {
     naked_asm!("ret")
 }
@@ -159,7 +158,7 @@ pub fn yield_thread() {
     };
 }
 
-#[naked]
+#[unsafe(naked)]
 #[no_mangle]
 #[cfg_attr(target_os = "macos", export_name = "\x01switch")] // see: How-to-MacOS-M.md for explanation
 unsafe extern "C" fn switch() {
@@ -199,11 +198,16 @@ fn main() {
     runtime.spawn(|| {
         println!("THREAD 2 STARTING");
         let id = 2;
-        for i in 0..15 {
+        for i in 0..7 {
+            println!("thread: {} counter: {}", id, i);
+        }
+        yield_thread();
+        for i in 7..15 {
             println!("thread: {} counter: {}", id, i);
             yield_thread();
         }
         println!("THREAD 2 FINISHED");
     });
+
     runtime.run();
 }
