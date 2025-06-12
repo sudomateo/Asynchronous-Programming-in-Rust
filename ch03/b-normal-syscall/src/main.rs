@@ -1,27 +1,51 @@
 use std::io;
 
 fn main() {
+    let filename = String::from("/tmp/rust.txt");
     let message = "Hello world from syscall!\n";
     let message = String::from(message);
-    syscall(message).unwrap();
+    syscall(filename, message).unwrap();
 }
 
 // ----------------------------------------------------------------------------
 // Normal syscall on Linux/macOS
 // ----------------------------------------------------------------------------
 
+#[allow(dead_code)]
+const O_RDONLY: i32 = 0;
+#[allow(dead_code)]
+const O_WRONLY: i32 = 1;
+#[allow(dead_code)]
+const O_RDWR: i32 = 2;
+#[allow(dead_code)]
+const O_CREAT: i32 = 64;
+#[allow(dead_code)]
+const O_TRUNC: i32 = 512;
+
 #[cfg(target_family = "unix")]
 #[link(name = "c")]
 extern "C" {
-    fn write(fd: u32, buf: *const u8, count: usize) -> i32;
+    fn write(fd: i32, buf: *const u8, count: usize) -> isize;
+    fn open(pathname: *const u8, flags: i32, mode: u32) -> i32;
+    fn close(fd: i32) -> i32;
 }
 
 #[cfg(target_family = "unix")]
-fn syscall(message: String) -> io::Result<()> {
+fn syscall(filename: String, message: String) -> io::Result<()> {
+    let filename_ptr = filename.as_ptr();
+    let fd = unsafe { open(filename_ptr, O_CREAT | O_TRUNC | O_RDWR, 0o644) };
+    if fd == -1 {
+        return Err(io::Error::last_os_error());
+    }
+
     let msg_ptr = message.as_ptr();
     let len = message.len();
-    let res = unsafe { write(1, msg_ptr, len) };
+    let res = unsafe { write(fd, msg_ptr, len) };
+    if res == -1 {
+        return Err(io::Error::last_os_error());
+    }
 
+    let res = unsafe { close(fd) };
     if res == -1 {
         return Err(io::Error::last_os_error());
     }
