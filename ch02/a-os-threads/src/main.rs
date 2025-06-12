@@ -18,6 +18,13 @@ fn main() {
     });
     println!("The tasks run concurrently!");
 
+    let t4 = thread::spawn(move || {
+        println!("Thread 4 started.");
+        sleep(std::time::Duration::from_millis(500));
+        println!("Thread 4 finished!");
+    });
+
     t1.join().unwrap();
     t2.join().unwrap();
+    t4.join().unwrap();
 }
